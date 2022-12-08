@@ -267,11 +267,72 @@ where
         A: de::DeserializeOwned,
     {
         if settings.actix.tls.enabled {
-            // for Address { host, port } in &settings.actix.hosts {
-            //     self = self.bind(format!("{}:{}", host, port))
-            //         .unwrap(/*TODO*/);
-            // }
-            todo!("[ApplySettings] TLS support has not been implemented yet.");
+            #[cfg(not(any(feature = "rustls", feature = "openssl")))]
+            panic!("`rustls` or `openssl` should be enabled when `actix.tls.enabled = true`.");
+
+            #[cfg(all(feature = "rustls", feature = "openssl"))]
+            compile_error!("feature `rustls` or `openssl` shouldn't be enabled both.");
+
+            #[cfg(feature = "rustls")]
+            {
+                use std::io::BufReader;
+                use rustls::{Certificate, PrivateKey, ServerConfig};
+                use rustls_pemfile::{certs, rsa_private_keys};
+                let config_builder = ServerConfig::builder()
+                    .with_safe_defaults()
+                    .with_no_client_auth();
+
+                // load TLS key/cert files
+                let cert_file = &mut BufReader::new(
+                    File::open(&settings.actix.tls.certificate).expect("cert_file not found"),
+                );
+                let key_file = &mut BufReader::new(
+                    File::open(&settings.actix.tls.private_key).expect("key_file not found"),
+                );
+
+                // convert files to key/cert objects
+                let cert_chain = certs(cert_file)
+                    .unwrap(/*TODO*/)
+                    .into_iter()
+                    .map(Certificate)
+                    .collect();
+                let mut keys: Vec<PrivateKey> = rsa_private_keys(key_file)
+                    .unwrap()
+                    .into_iter()
+                    .map(PrivateKey)
+                    .collect();
+                // exit if no keys could be parsed
+                if keys.is_empty() {
+                    eprintln!("Could not locate rsa private keys.");
+                    std::process::exit(1);
+                }
+                let config = config_builder
+                    .to_owned()
+                    .with_single_cert(cert_chain, keys.remove(0))
+                    .unwrap();
+                for Address { host, port } in &settings.actix.hosts {
+                    self = self
+                        .bind_rustls(format!("{}:{}", host, port), config.to_owned())
+                        .unwrap(/*TODO*/);
+                }
+            }
+            #[cfg(feature = "openssl")]
+            {
+                use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
+                // load TLS keys
+                for Address { host, port } in &settings.actix.hosts {
+                    let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+                    builder
+                        .set_private_key_file(&settings.actix.tls.private_key, SslFiletype::PEM)
+                        .unwrap(/*TODO*/);
+                    builder
+                        .set_certificate_chain_file(&settings.actix.tls.certificate)
+                        .unwrap(/*TODO*/);
+                    self = self
+                        .bind_openssl(format!("{}:{}", host, port), builder)
+                        .unwrap(/*TODO*/);
+                }
+            }
         } else {
             for Address { host, port } in &settings.actix.hosts {
                 self = self.bind(format!("{}:{}", host, port))
