@@ -59,7 +59,4 @@ pub struct ActixSettings {
 
     /// TLS (HTTPS) configuration.
     pub tls: Tls,
-
-    /// Ssl file format.
-    pub format: SslFileFormat,
 }

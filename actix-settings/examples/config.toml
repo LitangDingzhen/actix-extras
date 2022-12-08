@@ -66,7 +66,7 @@ shutdown-timeout = "default"
 
 # `rustls` or `openssl` should be enabled when TLS is enabled
 enabled = false
-enctype = "rsa"
+ssl_file_format = "rsa"
 certificate = "path/to/cert/cert.pem"
 private-key = "path/to/cert/key.pem"
 

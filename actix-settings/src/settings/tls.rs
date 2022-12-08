@@ -36,7 +36,7 @@ pub struct Tls {
     pub enabled: bool,
 
     /// private key file format
-    pub format: SslFileFormat,
+    pub ssl_file_format: SslFileFormat,
 
     /// Path to certificate `.pem` file.
     pub certificate: PathBuf,
