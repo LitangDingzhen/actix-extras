@@ -26,6 +26,6 @@ openssl = { version = "0.10", optional = true }
 env_logger = "0.10"
 
 [features]
-default = []
+default = ["rustls"]
 rustls = ["actix-web/rustls", "dep:rustls", "dep:rustls-pemfile"]
 openssl = ["actix-web/openssl", "dep:openssl"]

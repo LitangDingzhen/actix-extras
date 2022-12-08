@@ -94,7 +94,7 @@ pub use self::{
     parse::Parse,
     settings::{
         ActixSettings, Address, Backlog, KeepAlive, MaxConnectionRate, MaxConnections, Mode,
-        NumWorkers, Timeout, Tls, SslFileFormat
+        NumWorkers, SslFileFormat, Timeout, Tls,
     },
 };
 
@@ -275,19 +275,30 @@ where
 
             #[cfg(feature = "rustls")]
             {
-                use std::io::BufReader;
+                use std::io;
 
                 use rustls::{Certificate, PrivateKey, ServerConfig};
-                use rustls_pemfile::{certs, pkcs8_private_keys, rsa_private_keys};
+                use rustls_pemfile::{certs, read_one, Item};
+                fn private_keys(rd: &mut dyn io::BufRead) -> Result<Vec<Vec<u8>>, io::Error> {
+                    let mut keys = Vec::<Vec<u8>>::new();
+                    loop {
+                        match read_one(rd)? {
+                            None => return Ok(keys),
+                            Some(Item::RSAKey(key)) => keys.push(key),
+                            Some(Item::PKCS8Key(key)) => keys.push(key),
+                            Some(Item::ECKey(key)) => keys.push(key),
+                            _ => {}
+                        };
+                    }
+                }
                 let config_builder = ServerConfig::builder()
                     .with_safe_defaults()
                     .with_no_client_auth();
-
                 // load TLS key/cert files
-                let cert_file = &mut BufReader::new(
+                let cert_file = &mut io::BufReader::new(
                     File::open(&settings.actix.tls.certificate).expect("cert_file not found"),
                 );
-                let key_file = &mut BufReader::new(
+                let key_file = &mut io::BufReader::new(
                     File::open(&settings.actix.tls.private_key).expect("key_file not found"),
                 );
 
@@ -297,14 +308,12 @@ where
                     .into_iter()
                     .map(Certificate)
                     .collect();
-                let mut keys: Vec<PrivateKey> = match settings.actix.tls.ssl_file_format {
-                    SslFileFormat::RSA => rsa_private_keys(key_file),
-                    SslFileFormat::PKCS8 => pkcs8_private_keys(key_file)
-                }
-                .unwrap()
-                .into_iter()
-                .map(PrivateKey)
-                .collect();
+
+                let mut keys: Vec<PrivateKey> = private_keys(key_file)
+                    .unwrap()
+                    .into_iter()
+                    .map(PrivateKey)
+                    .collect();
                 // exit if no keys could be parsed
                 if keys.is_empty() {
                     eprintln!("Could not locate private keys.");
@@ -313,7 +322,7 @@ where
                 let config = config_builder
                     .to_owned()
                     .with_single_cert(cert_chain, keys.remove(0))
-                    .unwrap();
+                    .unwrap(/*TODO*/);
                 for Address { host, port } in &settings.actix.hosts {
                     self = self
                         .bind_rustls(format!("{}:{}", host, port), config.to_owned())
