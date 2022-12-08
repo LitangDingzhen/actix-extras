@@ -94,7 +94,7 @@ pub use self::{
     parse::Parse,
     settings::{
         ActixSettings, Address, Backlog, KeepAlive, MaxConnectionRate, MaxConnections, Mode,
-        NumWorkers, SslFileFormat, Timeout, Tls,
+        NumWorkers, Timeout, Tls,
     },
 };
 
