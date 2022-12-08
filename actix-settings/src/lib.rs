@@ -297,7 +297,7 @@ where
                     .into_iter()
                     .map(Certificate)
                     .collect();
-                let mut keys: Vec<PrivateKey> = match settings.actix.tls.format {
+                let mut keys: Vec<PrivateKey> = match settings.actix.tls.ssl_file_format {
                     SslFileFormat::RSA => rsa_private_keys(key_file),
                     SslFileFormat::PKCS8 => pkcs8_private_keys(key_file)
                 }
