@@ -62,8 +62,11 @@ client-shutdown = "default"
 # where N is an integer > 0 e.g. "6 seconds".
 shutdown-timeout = "default"
 
-[actix.tls] # TLS is disabled by default because the certs don't exist
+[actix.tls]
+
+# `rustls` or `openssl` should be enabled when TLS is enabled
 enabled = false
+enctype = "rsa"
 certificate = "path/to/cert/cert.pem"
 private-key = "path/to/cert/key.pem"
 

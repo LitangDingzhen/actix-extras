@@ -94,7 +94,7 @@ pub use self::{
     parse::Parse,
     settings::{
         ActixSettings, Address, Backlog, KeepAlive, MaxConnectionRate, MaxConnections, Mode,
-        NumWorkers, Timeout, Tls,
+        NumWorkers, Timeout, Tls, SslFileFormat
     },
 };
 
@@ -276,8 +276,9 @@ where
             #[cfg(feature = "rustls")]
             {
                 use std::io::BufReader;
+
                 use rustls::{Certificate, PrivateKey, ServerConfig};
-                use rustls_pemfile::{certs, rsa_private_keys};
+                use rustls_pemfile::{certs, pkcs8_private_keys, rsa_private_keys};
                 let config_builder = ServerConfig::builder()
                     .with_safe_defaults()
                     .with_no_client_auth();
@@ -296,14 +297,17 @@ where
                     .into_iter()
                     .map(Certificate)
                     .collect();
-                let mut keys: Vec<PrivateKey> = rsa_private_keys(key_file)
-                    .unwrap()
-                    .into_iter()
-                    .map(PrivateKey)
-                    .collect();
+                let mut keys: Vec<PrivateKey> = match settings.actix.tls.format {
+                    SslFileFormat::RSA => rsa_private_keys(key_file),
+                    SslFileFormat::PKCS8 => pkcs8_private_keys(key_file)
+                }
+                .unwrap()
+                .into_iter()
+                .map(PrivateKey)
+                .collect();
                 // exit if no keys could be parsed
                 if keys.is_empty() {
-                    eprintln!("Could not locate rsa private keys.");
+                    eprintln!("Could not locate private keys.");
                     std::process::exit(1);
                 }
                 let config = config_builder
