@@ -64,7 +64,8 @@ shutdown-timeout = "default"
 
 [actix.tls]
 
-# `rustls` or `openssl` should be enabled when TLS is enabled
+# TLS is disabled by default because the certs don't exist
+# the feature `rustls` or `openssl` should be enabled when TLS is enabled
 enabled = false
 certificate = "path/to/cert/cert.pem"
 private-key = "path/to/cert/key.pem"
